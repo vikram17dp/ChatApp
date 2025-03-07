@@ -16,7 +16,9 @@ const eslintConfig = [
       "react/no-unused-entities": "off", 
       "@next/next/no-img-element": "off", 
       "no-unused-vars": "off",
-      "@typescript-eslint/no-unused-vars": "off"
+      "@typescript-eslint/no-unused-vars": "off",
+      "react/no-unused-prop-types": "off",
+      "react/prop-types": "off",
     },
   },
 ];
