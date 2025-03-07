@@ -3,7 +3,7 @@
 import { MoonIcon, SunIcon, Volume2, VolumeX } from "lucide-react"
 import { Button } from "./ui/button"
 import { useTheme } from "next-themes"
-import { usePreferences } from "@/app/store/usePreferences"
+import { usePreferences } from "@/store/usePreferences"
 import { useSound } from "use-sound"
 
 const PreferencesTab = () => {
