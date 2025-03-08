@@ -11,7 +11,7 @@ const MessageList = () => {
             {
                 messages.map((message,index)=>(
                     <motion.div 
-                        key={index}
+                        key={message.id || index}
                         layout
                         initial={
                             {opacity:0,scale:1,y:50,x:0}
