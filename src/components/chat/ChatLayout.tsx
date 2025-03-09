@@ -4,11 +4,13 @@ import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "../ui/resi
 import { cn } from "@/lib/utils";
 import Sidebar from "../Sidebar";
 import MessageContainer from "./MessageContainer";
+import { User } from "@/db/dummy";
 
 interface ChatLayoutProps{
-  defaultLayout:number[] | undefined
+  defaultLayout:number[] | undefined,
+  users:User[]
 }
-const ChatLayout = ({defaultLayout=[320,480]}:ChatLayoutProps) => {
+const ChatLayout = ({defaultLayout=[320,480],users}:ChatLayoutProps) => {
 
 
   const [isMobile,setIsMobile] = useState(false)
@@ -55,7 +57,7 @@ const ChatLayout = ({defaultLayout=[320,480]}:ChatLayoutProps) => {
       }}
       className={cn(isCollapsed && "min-w-[80px] transition-all duration-300 ease-in-out ")}
     >
-      <Sidebar isCollapsed={isCollapsed} />
+      <Sidebar isCollapsed={isCollapsed} users={users} />
     </ResizablePanel>
 
 

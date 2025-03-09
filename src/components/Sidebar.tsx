@@ -1,16 +1,18 @@
-import { USERS } from "@/db/dummy";
+import { User, USERS } from "@/db/dummy";
 import { ScrollArea } from "./ui/scroll-area";
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from "./ui/tooltip";
 import { Avatar, AvatarImage } from "./ui/avatar";
 import { LogOut } from "lucide-react";
 import useSound from "use-sound";
 import { usePreferences } from "@/store/usePreferences";
+import { LogoutLink } from "@kinde-oss/kinde-auth-nextjs/components";
 
 interface SidebarProps {
-  isCollapsed: boolean;
+  isCollapsed: boolean,
+  users:User[]
 }
 
-const Sidebar = ({ isCollapsed }: SidebarProps) => {
+const Sidebar = ({ isCollapsed ,users}: SidebarProps) => {
   const selectedUser = USERS[0];
   const [playClickSound] = useSound('/sounds/mouse-click.mp3')
   const {soundEnabled} = usePreferences()
@@ -26,7 +28,7 @@ const Sidebar = ({ isCollapsed }: SidebarProps) => {
       )}
 
       <ScrollArea className="gap-2 px-2 group-[[data-collapsed=true]]:justify-center group-[[data-collapsed=true]]:px-2">
-        {USERS.map((user, idx) =>
+        {users.map((user, idx) =>
           isCollapsed ? (
             <TooltipProvider key={idx}>
               <Tooltip delayDuration={0}>
@@ -34,8 +36,8 @@ const Sidebar = ({ isCollapsed }: SidebarProps) => {
                   <div onClick={()=>{
                     if(soundEnabled) playClickSound()
                   }}>
-                  <Avatar className="my-1 flex justify-center items-center">
-                    <AvatarImage src={user.image} alt={user.name} className="border-2 border-white rounded-full w-10 h-10" />
+                  <Avatar className="my-1 flex justify-center items-center min-w-[3rem] min-h-[3rem]">
+                    <AvatarImage src={user.image ||  "/user-placeholder.png"} alt={user.name} className="border-2 border-white rounded-full w-10 h-10" />
                   </Avatar>
                   </div>
                 </TooltipTrigger>
@@ -73,7 +75,10 @@ const Sidebar = ({ isCollapsed }: SidebarProps) => {
                 </div>
             )}
             <div className="flex">
-                    <LogOut size={22} className="cursor-pointer "/>
+                <LogoutLink>
+                <LogOut size={22} className="cursor-pointer "/>
+
+                </LogoutLink>
             </div>
         </div>
     </div>

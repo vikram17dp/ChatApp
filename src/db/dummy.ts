@@ -12,6 +12,7 @@ export interface User {
 	image: string;
 }
 
+
 export const USERS = [
     {
       id: "1",
