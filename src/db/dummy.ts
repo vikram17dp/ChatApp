@@ -2,7 +2,7 @@ export interface Message {
 	id: number;
 	senderId: string;
 	content: string;
-	messageType: "text" | "image";
+	messageType: "text" | "image" | "video" ;
 }
 
 export interface User {
