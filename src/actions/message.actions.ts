@@ -2,82 +2,73 @@
 import { Message } from "@/db/dummy";
 import { redis } from "@/lib/db";
 import { getKindeServerSession } from "@kinde-oss/kinde-auth-nextjs/server";
-
+import { pusherClient,pusherServer } from "@/lib/pusher";
 
 type SendMessageActionArgs = {
 	content: string;
 	receiverId: string;
-	messageType: "text" | "image" | "video";
+	messageType: "text" | "image";
 };
-export async function sendMessageAction({content,messageType,receiverId}:SendMessageActionArgs){
-
-    const {getUser} = getKindeServerSession()
+export async function sendMessageAction({ content, messageType, receiverId }: SendMessageActionArgs) {
+    const { getUser } = getKindeServerSession();
     const user = await getUser();
-
-    if(!user) return {success:false,message:"User not authenticated"}
-
-    const senderId  = user.id;
-
-    const converstionId = `conversation:${[senderId,receiverId].sort().join(":")}`
-
-
-    // the issue with this has been explained in the tutorial, we need to sort the ids to make sure the conversation id is always the same
-	// john, jane
-	// 123,  456
-
-	// john sends a message to jane
-	// senderId: 123, receiverId: 456
-	// `conversation:123:456`
-
-	// jane sends a message to john
-	// senderId: 456, receiverId: 123
-	// conversation:456:123
-
-    const conversationExists = await redis.exists(converstionId)
-    
-    // if not
-    if(!conversationExists){
-        await redis.hset(converstionId,{
-            participant1:senderId,
-            participant2:receiverId
-        })
-        await redis.sadd(`user:${senderId}:conversations`,converstionId)
-        await redis.sadd(`user:${receiverId}:conversations`,converstionId)
+  
+    if (!user) return { success: false, message: "User not authenticated" };
+  
+    const senderId = user.id;
+  
+    const conversationId = `conversation:${[senderId, receiverId].sort().join(":")}`;
+  
+    const conversationExists = await redis.exists(conversationId); // Fix this line
+  
+    if (!conversationExists) { // Fix this line
+      await redis.hset(conversationId, { // Fix this line
+        participant1: senderId,
+        participant2: receiverId,
+      });
+  
+      await redis.sadd(`user:${senderId}:conversations`, conversationId); // Fix this line
+      await redis.sadd(`user:${receiverId}:conversations`, conversationId); // Fix this line
     }
+  
+    const messageId = `message:${Date.now()}:${Math.random().toString(36).substring(2, 9)}`;
+    const timestamp = Date.now();
+  
+    await redis.hset(messageId, {
+      senderId,
+      content,
+      timestamp,
+      messageType,
+    });
+  
+    await redis.zadd(`${conversationId}:messages`, { score: timestamp, member: JSON.stringify(messageId) });
 
-    // generate an unique message id
+    const channelName = `${senderId}_${receiverId}`.split('__').sort().join('__');
 
-    const messageId = `message:${Date.now()}:${Math.random().toString(36).substring(2,9)}`
-    const timeStamp = Date.now();
-
-    await redis.hset(messageId,{
-        senderId,
-        content,
-        timeStamp,
-        messageId
+    await pusherServer?.trigger(channelName,'newMessage',{
+        message:{senderId,content,timestamp,messageType}
     })
-    await redis.zadd(`${converstionId}:messages`,{score:timeStamp,member:JSON.stringify(messageId)})
+  
+    return { success: true, conversationId, messageId };
+  }
 
-    return {sucess:true,converstionId,messageId}
-}
-
-
-export async function getMessages(selectedUserId: string, currentUserId: string) {
+  export async function getMessages(selectedUserId: string, currentUserId: string) {
     try {
-      if (!selectedUserId || !currentUserId) return []
+      if (!selectedUserId || !currentUserId) return [];
   
-      const conversationId = `conversation:${[selectedUserId, currentUserId].sort().join(":")}`
-      const messageIds = await redis.zrange(`${conversationId}:messages`, 0, -1)
+      const conversationId = `conversation:${[selectedUserId, currentUserId].sort().join(":")}`; // Fix this line
   
-      if (messageIds.length === 0) return []
+      const messageIds = await redis.zrange(`${conversationId}:messages`, 0, -1); // Fix this line
   
-      const pipeline = redis.pipeline()
-      messageIds.forEach((messageId) => pipeline.hgetall(messageId as string))
-      const messages = (await pipeline.exec()) as Message[]
+      if (messageIds.length === 0) return [];
   
-      return messages
+      const pipeline = redis.pipeline();
+      messageIds.forEach((messageId) => pipeline.hgetall(messageId as string));
+      const messages = (await pipeline.exec()) as Message[];
+  
+      return messages;
     } catch (error) {
-      console.error("Error fetching messages:", error)
-      return []
+      console.error("Error fetching messages:", error);
+      return [];
     }
   }

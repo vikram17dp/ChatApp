@@ -6,16 +6,19 @@ import { AnimatePresence } from "framer-motion"
 import { ImageIcon, Loader, SendHorizontal, ThumbsUp } from "lucide-react"
 import { motion } from "framer-motion"
 import { Textarea } from "@/components/ui/textarea"
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import useSound from "use-sound"
 import { usePreferences } from "@/store/usePreferences"
-import { useMutation } from "@tanstack/react-query"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { sendMessageAction } from "@/actions/message.actions"
 import { useSelectedUser } from "@/store/useSelectedUser"
 import EmojiPicker from "./EmojiPicker"
 import { CldUploadWidget, CloudinaryUploadWidgetInfo } from 'next-cloudinary';
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "../ui/dialog"
+import { useKindeBrowserClient } from "@kinde-oss/kinde-auth-nextjs";
+import { Message } from "@/db/dummy";
+import { pusherClient,pusherServer } from "@/lib/pusher";
 
 const ChatBottomBar = () => {
   const [message, setMessage] = useState("")
@@ -29,6 +32,8 @@ const ChatBottomBar = () => {
 
   const { selectedUser } = useSelectedUser()
   const [imgUrl,setImgUrl] = useState("");
+  const {user:currentUser}= useKindeBrowserClient();
+  const queryClient = useQueryClient()
 
   const playRandomKeyStrokeSound = () => {
     const randomIndex = Math.floor(Math.random() * playSoundFunctions.length)
@@ -75,6 +80,21 @@ const ChatBottomBar = () => {
     })
   }
 
+
+  useEffect(()=>{
+      const channelName = `${currentUser?.id}_${selectedUser?.id}`.split("__").sort().join("__")
+      const channel = pusherClient.subscribe(channelName);
+      const handleNewMessage = (data:{message:Message})=>{
+        queryClient.setQueryData(["messages",selectedUser?.id],(oldMessages:Message[])=>{
+          return [...oldMessages,data.message]
+        })
+      }
+      channel?.bind("newMessage",handleNewMessage);
+      return ()=>{
+        channel?.unbind("newMessage",handleNewMessage)
+        pusherClient.unsubscribe(channelName)
+      }
+  },[currentUser?.id,selectedUser?.id,queryClient])
   return (
     <div className="p-2 flex justify-between w-full items-center gap-2">
       {!message.trim() && (
@@ -199,4 +219,3 @@ const ChatBottomBar = () => {
 }
 
 export default ChatBottomBar
-
