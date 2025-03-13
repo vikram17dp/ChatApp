@@ -1,7 +1,7 @@
 "use client"
 
 import type React from "react"
-import Image from "next/image";
+import Image from "next/image"
 import { AnimatePresence } from "framer-motion"
 import { ImageIcon, Loader, SendHorizontal, ThumbsUp } from "lucide-react"
 import { motion } from "framer-motion"
@@ -14,11 +14,11 @@ import { useMutation, useQueryClient } from "@tanstack/react-query"
 import { sendMessageAction } from "@/actions/message.actions"
 import { useSelectedUser } from "@/store/useSelectedUser"
 import EmojiPicker from "./EmojiPicker"
-import { CldUploadWidget, CloudinaryUploadWidgetInfo } from 'next-cloudinary';
+import { CldUploadWidget, type CloudinaryUploadWidgetInfo } from "next-cloudinary"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "../ui/dialog"
-import { useKindeBrowserClient } from "@kinde-oss/kinde-auth-nextjs";
-import { Message } from "@/db/dummy";
-import { pusherClient,pusherServer } from "@/lib/pusher";
+import { useKindeBrowserClient } from "@kinde-oss/kinde-auth-nextjs"
+import type { Message } from "@/db/dummy"
+import { pusherClient } from "@/lib/pusher" // Remove pusherServer import
 
 const ChatBottomBar = () => {
   const [message, setMessage] = useState("")
@@ -28,11 +28,12 @@ const ChatBottomBar = () => {
   const [playSound2] = useSound("/sounds/keystroke2.mp3")
   const [playSound3] = useSound("/sounds/keystroke3.mp3")
   const [playSound4] = useSound("/sounds/keystroke4.mp3")
+  const [playNotifcationSound] = useSound("/sounds/notification.mp3")
   const playSoundFunctions = [playSound1, playSound2, playSound3, playSound4]
 
   const { selectedUser } = useSelectedUser()
-  const [imgUrl,setImgUrl] = useState("");
-  const {user:currentUser}= useKindeBrowserClient();
+  const [imgUrl, setImgUrl] = useState("")
+  const { user: currentUser } = useKindeBrowserClient()
   const queryClient = useQueryClient()
 
   const playRandomKeyStrokeSound = () => {
@@ -80,61 +81,94 @@ const ChatBottomBar = () => {
     })
   }
 
+  useEffect(() => {
+    if (!currentUser?.id || !selectedUser?.id) return
 
-  useEffect(()=>{
-      const channelName = `${currentUser?.id}_${selectedUser?.id}`.split("__").sort().join("__")
-      const channel = pusherClient.subscribe(channelName);
-      const handleNewMessage = (data:{message:Message})=>{
-        queryClient.setQueryData(["messages",selectedUser?.id],(oldMessages:Message[])=>{
-          return [...oldMessages,data.message]
-        })
+    // Create two channel names to listen to both directions of messages
+    const channelName1 = `${currentUser.id}_${selectedUser.id}`.split("__").sort().join("__")
+    const channelName2 = `${selectedUser.id}_${currentUser.id}`.split("__").sort().join("__")
+
+    console.log("Subscribing to channels:", channelName1, channelName2)
+
+    // Subscribe to both channels
+    const channel1 = pusherClient.subscribe(channelName1)
+    const channel2 = pusherClient.subscribe(channelName2)
+
+    const handleNewMessage = (data: { message: Message }) => {
+      console.log("New message received:", data.message)
+
+      queryClient.setQueryData(["messages", selectedUser.id], (oldMessages: Message[] | undefined) => {
+        if (!oldMessages) return [data.message]
+
+        // Check if message already exists to prevent duplicates
+        const messageExists = oldMessages.some(
+          (msg) =>
+            msg.senderId === data.message.senderId &&
+            msg.content === data.message.content &&
+            msg.timestamp === data.message.timestamp,
+        )
+
+        if (messageExists) return oldMessages
+        return [...oldMessages, data.message]
+      })
+      if(soundEnabled && data.message.senderId != currentUser?.id){
+        playNotifcationSound();
       }
-      channel?.bind("newMessage",handleNewMessage);
-      return ()=>{
-        channel?.unbind("newMessage",handleNewMessage)
-        pusherClient.unsubscribe(channelName)
-      }
-  },[currentUser?.id,selectedUser?.id,queryClient])
+    }
+
+    // Bind event handlers to both channels
+    channel1.bind("newMessage", handleNewMessage)
+    channel2.bind("newMessage", handleNewMessage)
+    return () => {
+      // Clean up both channels
+      channel1.unbind("newMessage", handleNewMessage)
+      channel2.unbind("newMessage", handleNewMessage)
+      pusherClient.unsubscribe(channelName1)
+      pusherClient.unsubscribe(channelName2)
+    }
+  }, [currentUser?.id, selectedUser?.id, queryClient,playNotifcationSound,soundEnabled])
+
   return (
     <div className="p-2 flex justify-between w-full items-center gap-2">
       {!message.trim() && (
         <CldUploadWidget
-          signatureEndpoint={"/api/sign-cloudinary-params"}
-          onSuccess={(result,{widget})=>{
-            setImgUrl((result.info as CloudinaryUploadWidgetInfo).secure_url);
-            widget.close();
+          signatureEndpoint="/api/sign-cloudinary-params"
+          onSuccess={(result, { widget }) => {
+            setImgUrl((result.info as CloudinaryUploadWidgetInfo).secure_url)
+            widget.close()
           }}
         >
-          {({open})=>{
-            return <ImageIcon size={20} className="cursor-pointer text-muted-foreground"
-              onClick={()=>open()}
-            />
-          }}
+          {({ open }) => (
+            <ImageIcon size={20} className="cursor-pointer text-muted-foreground" onClick={() => open()} />
+          )}
         </CldUploadWidget>
       )}
-        <Dialog open={!!imgUrl}>
-          <DialogContent>
-            <DialogHeader>
+      <Dialog open={!!imgUrl} onOpenChange={(open) => !open && setImgUrl("")}>
+        <DialogContent>
+          <DialogHeader>
             <DialogTitle>Image Preview</DialogTitle>
-            
-            </DialogHeader>
-            <div className="flex justify-center items-center relative h-96 w-full mx-auto">
-              <Image src={imgUrl} alt="Image Preview" fill className="object-contain"/>
-            </div>
-            <DialogFooter>
+          </DialogHeader>
+          <div className="flex justify-center items-center relative h-96 w-full mx-auto">
+            <Image src={imgUrl || "/placeholder.svg"} alt="Image Preview" fill className="object-contain" />
+          </div>
+          <DialogFooter>
             <Button
-                type="submit"
-                onClick={() => {
-                sendMessage({ content: imgUrl || "", messageType: "image", receiverId: selectedUser?.id || "" });
-                setImgUrl("");
-            }}
+              type="submit"
+              onClick={() => {
+                if (!selectedUser?.id) return
+                sendMessage({
+                  content: imgUrl,
+                  messageType: "image",
+                  receiverId: selectedUser.id,
+                })
+                setImgUrl("")
+              }}
             >
               Send
             </Button>
-
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <div className="w-full relative">
         <AnimatePresence mode="wait">
           <motion.div
@@ -219,3 +253,4 @@ const ChatBottomBar = () => {
 }
 
 export default ChatBottomBar
+

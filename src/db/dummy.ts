@@ -1,10 +1,10 @@
 export interface Message {
-	id: number;
-	senderId: string;
-	content: string;
-	messageType: "text" | "image" | "video" ;
+  id: number;
+  senderId: string;
+  content: string;
+  messageType: "text" | "image" | "video";
+  timestamp: Date; 
 }
-
 export interface User {
 	id: string;
 	name: string;
