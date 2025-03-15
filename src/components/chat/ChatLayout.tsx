@@ -2,10 +2,10 @@
 import { useEffect, useState } from "react";
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "../ui/resizable"
 import { cn } from "@/lib/utils";
-import Sidebar from "../Sidebar";
 import MessageContainer from "./MessageContainer";
 import { User } from "@/db/dummy";
 import { useSelectedUser } from "@/store/useSelectedUser";
+import Sidebar from "../Sidebar";
 
 interface ChatLayoutProps{
   defaultLayout:number[] | undefined,

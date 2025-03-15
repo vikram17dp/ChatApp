@@ -29,6 +29,7 @@ const Sidebar = ({ isCollapsed, users }: SidebarProps) => {
           </div>
         </div>
       )}
+      
 
       <ScrollArea className="gap-2 px-2 group-[[data-collapsed=true]]:justify-center group-[[data-collapsed=true]]:px-2">
         {users.map((user, idx) =>
@@ -41,7 +42,7 @@ const Sidebar = ({ isCollapsed, users }: SidebarProps) => {
                     setSelectedUser(user);
                   }}>
                     <Avatar className="my-1 flex justify-center items-center min-w-[3rem] min-h-[3rem]">
-                      <AvatarImage src={user?.image || "/user-placeholder.png"} alt={user.name} className="border-2 border-white rounded-full w-10 h-10" />
+                      <AvatarImage src={user?.image?.trim() ? user.image : "/user-placeholder.png"}  referrerPolicy="no-referrer" alt={user.name} className="border-2 border-white rounded-full w-10 h-10" />
                     </Avatar>
                   </div>
                 </TooltipTrigger>
@@ -56,7 +57,7 @@ const Sidebar = ({ isCollapsed, users }: SidebarProps) => {
               }}
             >
               <Avatar className="w-10 h-10">
-                <AvatarImage src={user?.image || '/user-placeholder.png'} alt={user.name} />
+                <AvatarImage src={user?.image || '/user-placeholder.png'}  referrerPolicy="no-referrer" alt={user.name} />
               </Avatar>
               <p className="text-sm font-medium">{user.name}</p>
             </div>
