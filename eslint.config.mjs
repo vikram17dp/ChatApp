@@ -19,6 +19,7 @@ const eslintConfig = [
       "@typescript-eslint/no-unused-vars": "off",
       "react/no-unused-prop-types": "off",
       "react/prop-types": "off",
+      "@typescript-eslint/no-unused-expressions": "off"
     },
   },
 ];
